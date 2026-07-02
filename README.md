@@ -6,6 +6,7 @@ Generate a contributor language contribution SVG using only GitHub Actions, `git
   <img alt="Our repository blame graph" src="https://github.com/Haruko386-UnOffical/RepositoryBlame/blob/3f237c85f68dae7d734b7b5b8baa91d2ec0285aa/code-stats.svg" width="70%">
     </picture>
 </div>
+
 ## How it works
 
 1. The target repository only needs a workflow yml.
