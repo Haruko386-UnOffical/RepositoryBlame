@@ -374,126 +374,249 @@ def lang_segments(lang_counts, total, bar_width):
 
     return segments
 
+OTHER_COLOR = "#d1d7de"
+TRACK_COLOR = "#eff2f5"
+
+def format_pct(part, total):
+    if total <= 0:
+        return "0.0%"
+    return f"{part / total * 100:.1f}%"
+
+def approx_text_width(text, font_size=13, bold=False):
+    factor = 0.62 if bold else 0.56
+    return int(len(text) * font_size * factor)
+
+def summarize_languages(lang_counter, total, max_items=6, min_percent=2.0):
+    items = sorted(lang_counter.items(), key=lambda x: x[1], reverse=True)
+
+    shown = []
+    other_count = 0
+
+    for (lang_name, color), count in items:
+        pct = count / total * 100 if total else 0
+        if len(shown) < max_items and pct >= min_percent:
+            shown.append((lang_name, color, count, pct))
+        else:
+            other_count += count
+
+    if other_count > 0:
+        shown.append(("Other", OTHER_COLOR, other_count, other_count / total * 100 if total else 0))
+
+    if not shown and items:
+        top = items[:max_items]
+        shown = [(lang_name, color, count, count / total * 100 if total else 0)
+                 for (lang_name, color), count in top]
+        rest = sum(count for _, count in items[max_items:])
+        if rest > 0:
+            shown.append(("Other", OTHER_COLOR, rest, rest / total * 100 if total else 0))
+
+    return shown
+
+def wrap_legend_items(items, max_width, font_size=13):
+    rows = []
+    current_row = []
+    current_width = 0
+
+    for lang_name, color, count, pct in items:
+        label = lang_name
+        pct_text = f"{pct:.1f}%"
+
+        item_width = (
+            14 +                       # dot + margin
+            approx_text_width(label, font_size, bold=True) +
+            8 +
+            approx_text_width(pct_text, font_size, bold=False) +
+            22                        # item gap
+        )
+
+        if current_row and current_width + item_width > max_width:
+            rows.append(current_row)
+            current_row = []
+            current_width = 0
+
+        current_row.append((lang_name, color, count, pct))
+        current_width += item_width
+
+    if current_row:
+        rows.append(current_row)
+
+    return rows
+
+def render_legend(parts, x, y, rows, font_size=13, row_gap=24):
+    dot_r = 5
+
+    for row in rows:
+        cursor_x = x
+        for lang_name, color, count, pct in row:
+            pct_text = f"{pct:.1f}%"
+
+            parts.append(
+                f'<circle cx="{cursor_x + dot_r}" cy="{y - 4}" r="{dot_r}" fill="{color}"/>'
+            )
+            cursor_x += 18
+
+            parts.append(
+                f'<text x="{cursor_x}" y="{y}" font-size="{font_size}" font-weight="600" fill="#24292f">{escape(lang_name)}</text>'
+            )
+            cursor_x += approx_text_width(lang_name, font_size, bold=True) + 8
+
+            parts.append(
+                f'<text x="{cursor_x}" y="{y}" font-size="{font_size}" fill="#57606a">{pct_text}</text>'
+            )
+            cursor_x += approx_text_width(pct_text, font_size, bold=False) + 22
+
+        y += row_gap
+
+    return y
 
 def generate_svg(stats, total_lines, output, width, title, min_percent):
     margin = 32
     avatar_size = 44
-    row_height = 78
-    top = 86
-    bar_x = 250
-    bar_width = max(260, width - bar_x - margin)
+    left_x = margin
+    text_x = left_x + avatar_size + 16
+    bar_x = 265
+    bar_width = width - bar_x - margin
+    header_h = 92
+    card_radius = 18
 
-    users = sorted(stats.items(), key=lambda item: item[1]["total"], reverse=True)
-
-    # MVP rule: when total contributors < 5, show everyone as a full row even if below min-percent.
-    hide_small = len(users) >= 5
+    contributors = sorted(stats.items(), key=lambda x: x[1]["total"], reverse=True)
 
     visible = []
     hidden = []
-    for user, data in users:
+
+    total_contributors = len(contributors)
+
+    for user, data in contributors:
         percent = data["total"] / total_lines * 100 if total_lines else 0
-        if hide_small and percent < min_percent:
-            hidden.append((user, data, percent))
-        else:
+        if total_contributors < 5:
             visible.append((user, data, percent))
+        else:
+            if percent >= min_percent:
+                visible.append((user, data, percent))
+            else:
+                hidden.append((user, data, percent))
 
-    hidden_rows = 0
+    # 先预估高度
+    layout_info = []
+    total_height = header_h + 18
+
+    for user, data, percent in visible:
+        lang_items = summarize_languages(data["langs"], data["total"], max_items=6, min_percent=2.0)
+        legend_rows = wrap_legend_items(lang_items, max_width=bar_width)
+        row_h = max(avatar_size, 18 + 18 + len(legend_rows) * 22) + 26
+        layout_info.append((user, data, percent, lang_items, legend_rows, row_h))
+        total_height += row_h
+
     if hidden:
-        hidden_rows = 70 + ((min(len(hidden), 30) + 17) // 18) * 40
+        total_height += 72
 
-    empty_height = 120 if not users else 0
-    height = top + len(visible) * row_height + hidden_rows + empty_height + 28
-    height = max(height, 180)
+    total_height += 20
 
     parts = [
-        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">',
+        f'<svg width="{width}" height="{total_height}" viewBox="0 0 {width} {total_height}" xmlns="http://www.w3.org/2000/svg">',
         '<style>',
         'text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;}',
-        '.card{fill:#ffffff;stroke:#d0d7de;stroke-width:1;}',
-        '.title{font-size:26px;font-weight:700;fill:#24292f;}',
-        '.sub{font-size:13px;fill:#57606a;}',
-        '.name{font-size:18px;font-weight:700;fill:#24292f;}',
-        '.meta{font-size:13px;fill:#57606a;}',
-        '.small{font-size:12px;fill:#57606a;}',
         '</style>',
-        f'<rect class="card" x="1" y="1" width="{width - 2}" height="{height - 2}" rx="18"/>',
-        f'<text class="title" x="{margin}" y="42">{escape(title)}</text>',
-        f'<text class="sub" x="{margin}" y="64">{total_lines} non-empty blamed lines · {len(users)} contributors</text>',
+        f'<rect x="1" y="1" width="{width-2}" height="{total_height-2}" rx="{card_radius}" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>',
+        f'<text x="{margin}" y="46" font-size="20" font-weight="700" fill="#24292f">{escape(title)}</text>',
+        f'<text x="{margin}" y="68" font-size="13" fill="#57606a">{total_lines} non-empty blamed lines · {len(contributors)} contributors</text>',
     ]
 
-    if not users:
-        parts.append(f'<text class="meta" x="{margin}" y="110">No supported source files found.</text>')
-        parts.append('</svg>')
-        Path(output).parent.mkdir(parents=True, exist_ok=True)
-        Path(output).write_text("\n".join(parts), encoding="utf-8")
-        return
+    y = header_h
 
-    y = top
-    for user, data, percent in visible:
+    for user, data, percent, lang_items, legend_rows, row_h in layout_info:
+        avatar_y = y
+        name_y = y + 14
+        meta_y = y + 34
+        bar_y = y + 3
+
         avatar = data.get("avatar")
-        avatar_id = safe_id("avatar-" + user)
-        cx = margin + avatar_size / 2
-        cy = y + avatar_size / 2
+        avatar_id = safe_id(user)
 
         if avatar:
-            parts.append(f'<clipPath id="{avatar_id}"><circle cx="{cx}" cy="{cy}" r="{avatar_size / 2}"/></clipPath>')
-            parts.append(f'<image href="{avatar}" x="{margin}" y="{y}" width="{avatar_size}" height="{avatar_size}" clip-path="url(#{avatar_id})"/>')
-        else:
-            parts.append(f'<circle cx="{cx}" cy="{cy}" r="{avatar_size / 2}" fill="#d0d7de"/>')
-            parts.append(f'<text x="{cx}" y="{y + 29}" text-anchor="middle" font-size="16" font-weight="700" fill="#57606a">{escape(user[:1].upper())}</text>')
-
-        parts.append(f'<text class="name" x="{margin + 60}" y="{y + 19}">{escape(user)}</text>')
-        parts.append(f'<text class="meta" x="{margin + 60}" y="{y + 41}">{data["total"]} lines · {percent:.2f}%</text>')
-
-        parts.append(f'<rect x="{bar_x}" y="{y + 8}" width="{bar_width}" height="28" rx="14" fill="#eff3f6"/>')
-
-        x = bar_x
-        segments = lang_segments(data["langs"], data["total"], bar_width)
-        for idx, ((lang_name, color), count, seg_w) in enumerate(segments):
-            rx = 14 if idx == 0 or idx == len(segments) - 1 else 0
-            overlap = 0.5 if idx != 0 else 0
             parts.append(
-                f'<rect x="{x - overlap:.2f}" y="{y + 8}" width="{seg_w + overlap:.2f}" height="28" rx="{rx}" fill="{color}"/>'
+                f'<clipPath id="avatar-{avatar_id}"><circle cx="{left_x + avatar_size/2}" cy="{avatar_y + avatar_size/2}" r="{avatar_size/2}"/></clipPath>'
             )
-            x += seg_w
+            parts.append(
+                f'<image href="{avatar}" x="{left_x}" y="{avatar_y}" width="{avatar_size}" height="{avatar_size}" clip-path="url(#avatar-{avatar_id})"/>'
+            )
+        else:
+            parts.append(
+                f'<circle cx="{left_x + avatar_size/2}" cy="{avatar_y + avatar_size/2}" r="{avatar_size/2}" fill="#d0d7de"/>'
+            )
+            parts.append(
+                f'<text x="{left_x + avatar_size/2}" y="{avatar_y + 28}" text-anchor="middle" font-size="16" font-weight="700" fill="#57606a">{escape(user[:1].upper())}</text>'
+            )
 
-        labels = []
-        for (lang_name, color), count in sorted(data["langs"].items(), key=lambda item: item[1], reverse=True)[:3]:
-            lang_percent = count / data["total"] * 100 if data["total"] else 0
-            labels.append(f'{lang_name} {lang_percent:.1f}%')
-        parts.append(f'<text class="small" x="{bar_x}" y="{y + 56}">{escape(" · ".join(labels))}</text>')
+        # 用户名
+        parts.append(
+            f'<text x="{text_x}" y="{name_y}" font-size="16" font-weight="700" fill="#24292f">{escape(user)}</text>'
+        )
 
-        y += row_height
+        # 行数和占比
+        parts.append(
+            f'<text x="{text_x}" y="{meta_y}" font-size="13" fill="#57606a">{data["total"]} lines · {percent:.2f}%</text>'
+        )
+
+        # bar 底轨 + 裁剪
+        bar_height = 18
+        bar_radius = 9
+        clip_id = f"bar-clip-{avatar_id}"
+
+        parts.append(
+            f'<clipPath id="{clip_id}"><rect x="{bar_x}" y="{bar_y}" width="{bar_width}" height="{bar_height}" rx="{bar_radius}"/></clipPath>'
+        )
+        parts.append(
+            f'<rect x="{bar_x}" y="{bar_y}" width="{bar_width}" height="{bar_height}" rx="{bar_radius}" fill="{TRACK_COLOR}"/>'
+        )
+
+        seg_x = bar_x
+        for lang_name, color, count, pct in lang_items:
+            seg_w = bar_width * count / data["total"] if data["total"] else 0
+            if seg_w <= 0:
+                continue
+            parts.append(
+                f'<rect x="{seg_x:.2f}" y="{bar_y}" width="{seg_w:.2f}" height="{bar_height}" fill="{color}" clip-path="url(#{clip_id})"/>'
+            )
+            seg_x += seg_w
+
+        # legend
+        legend_start_y = y + 44
+        render_legend(parts, bar_x, legend_start_y, legend_rows, font_size=13, row_gap=22)
+
+        y += row_h
 
     if hidden:
-        y += 8
-        parts.append(f'<text class="meta" x="{margin}" y="{y + 14}">Contributors below {min_percent:.2f}%</text>')
-        y += 30
-        x = margin
-        size = 30
-        gap = 10
-        per_row = max(1, (width - margin * 2) // (size + gap))
+        parts.append(
+            f'<text x="{margin}" y="{y + 10}" font-size="13" fill="#57606a">Contributors below {min_percent}%</text>'
+        )
 
-        for idx, (user, data, percent) in enumerate(hidden[:30]):
-            if idx > 0 and idx % per_row == 0:
-                x = margin
-                y += 40
+        icon_x = margin
+        icon_y = y + 24
+        size = 28
 
+        for user, data, percent in hidden[:30]:
             avatar = data.get("avatar")
-            small_id = safe_id("small-avatar-" + user)
-            cx = x + size / 2
-            cy = y + size / 2
+            uid = safe_id(user)
+
             if avatar:
-                parts.append(f'<clipPath id="{small_id}"><circle cx="{cx}" cy="{cy}" r="{size / 2}"/></clipPath>')
-                parts.append(f'<image href="{avatar}" x="{x}" y="{y}" width="{size}" height="{size}" clip-path="url(#{small_id})"/>')
+                parts.append(
+                    f'<clipPath id="small-avatar-{uid}"><circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" r="{size/2}"/></clipPath>'
+                )
+                parts.append(
+                    f'<image href="{avatar}" x="{icon_x}" y="{icon_y}" width="{size}" height="{size}" clip-path="url(#small-avatar-{uid})"/>'
+                )
             else:
-                parts.append(f'<circle cx="{cx}" cy="{cy}" r="{size / 2}" fill="#d0d7de"/>')
-            x += size + gap
+                parts.append(
+                    f'<circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" r="{size/2}" fill="#d0d7de"/>'
+                )
+                parts.append(
+                    f'<text x="{icon_x + size/2}" y="{icon_y + 19}" text-anchor="middle" font-size="12" font-weight="700" fill="#57606a">{escape(user[:1].upper())}</text>'
+                )
 
-        if len(hidden) > 30:
-            parts.append(f'<text class="small" x="{x}" y="{y + 21}">+{len(hidden) - 30}</text>')
+            icon_x += size + 10
 
-    parts.append('</svg>')
+    parts.append("</svg>")
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text("\n".join(parts), encoding="utf-8")
