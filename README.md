@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       - name: Generate code stats SVG
-        uses: Haruko386/code-stats-card@main
+        uses: Haruko386-UnOffical/RepositoryBlame@main
         with:
           output: dist/code-stats.svg
           title: "Code Stats"
@@ -52,7 +52,7 @@ jobs:
             target/**
             *.lock
           users: |
-            Haruko386=Haruko386,tryeverypossible@163.com,Wang Jiawei
+            Haruko386=Haruko386,tryeverypossible@163.com
 
       - name: Push SVG to codeStats branch
         uses: crazy-max/ghaction-github-pages@v4
@@ -63,7 +63,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Replace `Haruko386/code-stats-card@main` with your real Action repository.
+Replace `Haruko386-UnOffical/RepositoryBlame@main` with your real Action repository.
 
 After generation, reference the SVG in your README:
 
