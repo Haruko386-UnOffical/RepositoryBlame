@@ -1,7 +1,11 @@
 # RepositoryBlame
 
 Generate a contributor language contribution SVG using only GitHub Actions, `git blame`, and the GitHub commit API.
-
+<div align="center">
+   <picture>
+  <img alt="Our repository blame graph" src="https://github.com/Haruko386-UnOffical/RepositoryBlame/blob/3f237c85f68dae7d734b7b5b8baa91d2ec0285aa/code-stats.svg" width="70%">
+    </picture>
+</div>
 ## How it works
 
 1. The target repository only needs a workflow yml.
@@ -68,8 +72,9 @@ Replace `Haruko386-UnOffical/RepositoryBlame@main` with your real Action reposit
 After generation, reference the SVG in your README:
 
 ```md
-![Code Stats](https://raw.githubusercontent.com/OWNER/REPO/codeStats/code-stats.svg)
+![Code Stats](https://github.com/Haruko386-UnOffical/RepositoryBlame/blob/3f237c85f68dae7d734b7b5b8baa91d2ec0285aa/code-stats.svg)
 ```
+
 
 ## Inputs
 
@@ -82,12 +87,3 @@ After generation, reference the SVG in your README:
 | `ignore` | empty | Extra ignore glob patterns, one per line. |
 | `users` | empty | Optional fallback aliases. Format: `GitHubUser=alias,email,name`. |
 | `github-token` | empty | Token used to resolve commit SHA to GitHub account/avatar. |
-
-## MVP behavior
-
-- Stats are based on current-file `git blame`, not the complete historical number of lines ever written.
-- Empty lines are ignored.
-- Generated/vendor/build/media files are ignored by default.
-- Contributor avatars are resolved from blame commit SHA through GitHub's commit API.
-- If the commit is not linked to a GitHub account, the generator falls back to `users`, noreply email parsing, or initials.
-- If total contributors are fewer than 5, all contributors are shown as full rows, even if some are below `min-percent`.
