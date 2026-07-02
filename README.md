@@ -52,7 +52,7 @@ jobs:
             target/**
             *.lock
           users: |
-            Haruko386=Haruko386,tryeverypossible@163.com,Wang Jiawei
+            Haruko386=Haruko386,tryeverypossible@163.com
 
       - name: Push SVG to codeStats branch
         uses: crazy-max/ghaction-github-pages@v4
