@@ -521,8 +521,16 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
         layout_info.append((user, data, percent, lang_items, legend_rows, row_h))
         total_height += row_h
 
-    if hidden:
-        total_height += 72
+    if hidden and minor_contributors_limit != 0:
+        if minor_contributors_limit is None:
+            hidden_count = len(hidden)
+        else:
+            hidden_count = min(len(hidden), minor_contributors_limit)
+
+        icons_per_row = max(1, (width - margin * 2 - 80) // 38)
+        hidden_rows = (hidden_count + icons_per_row - 1) // icons_per_row
+
+        total_height += 34 + hidden_rows * 38
 
     total_height += 20
 
@@ -616,7 +624,13 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
         icon_y = y + 24
         size = 28
 
+        max_icon_x = width - margin - 80
+
         for user, data, percent in hidden_to_show:
+            if icon_x + size > max_icon_x:
+                icon_x = margin
+                icon_y += size + 10
+
             avatar = data.get("avatar")
             uid = safe_id(user)
 
@@ -647,6 +661,13 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
 
         if minor_contributors_limit is not None and len(hidden) > minor_contributors_limit:
             remaining = len(hidden) - minor_contributors_limit
+            
+            more_text_width = approx_text_width(f"+{remaining} more", 13)
+
+            if icon_x + more_text_width + 8 > width - margin:
+                icon_x = margin
+                icon_y += size + 10
+
             parts.append(
                 f'<text x="{icon_x + 4}" y="{icon_y + 19}" font-size="13" fill="#57606a">'
                 f'+{remaining} more'
