@@ -3,7 +3,7 @@
 Generate a contributor language contribution SVG using only GitHub Actions, `git blame`, and the GitHub commit API.
 <div align="center">
    <picture>
-  <img alt="Our repository blame graph" src="https://github.com/Haruko386-UnOffical/RepositoryBlame/blob/3f237c85f68dae7d734b7b5b8baa91d2ec0285aa/code-stats.svg" width="70%">
+  <img alt="Our repository blame graph" src="https://raw.githubusercontent.com/Haruko386-UnOffical/RepositoryBlame/refs/heads/codeStats/code-stats.svg" width="70%">
     </picture>
 </div>
 
@@ -27,6 +27,11 @@ on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to analyze"
+        required: false
+        default: "main"
 
 permissions:
   contents: write
@@ -56,8 +61,6 @@ jobs:
             build/**
             target/**
             *.lock
-          users: |
-            Haruko386=Haruko386,tryeverypossible@163.com
 
       - name: Push SVG to codeStats branch
         uses: crazy-max/ghaction-github-pages@v4
@@ -68,14 +71,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Replace `Haruko386-UnOffical/RepositoryBlame@main` with your real Action repository.
+> [!Note]
+> `Haruko386-UnOffical/RepositoryBlame@main` points to the official RepositoryBlame Action repository.
+> In most cases, you only need to keep this value and configure the options under `with:`.
+> If you fork this project and customize the Action implementation, replace it with your own fork, for example `your-name/RepositoryBlame@main`.
 
 After generation, reference the SVG in your README:
 
-```md
-![Code Stats](https://github.com/Haruko386-UnOffical/RepositoryBlame/blob/3f237c85f68dae7d734b7b5b8baa91d2ec0285aa/code-stats.svg)
+```markdown
+![Code Stats](https://raw.githubusercontent.com/<UserName>/<Repository-Name>/refs/heads/codeStats/code-stats.svg)
 ```
-
 
 ## Inputs
 
