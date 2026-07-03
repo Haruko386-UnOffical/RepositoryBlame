@@ -283,6 +283,20 @@ def blame_file(path):
 
     return result
 
+def parse_minor_contributors_limit(raw_value, default=22):
+    value = str(raw_value or "").strip().lower()
+    if value == "":
+        return default
+    
+    if value in ("all", "full", "*"):
+        return None  # No limit
+    
+    try:
+        parsed = int(value)
+        return max(parsed, 0)
+    except ValueError:
+        return default    
+
 
 def github_api_get_json(url, token):
     headers = {
@@ -469,7 +483,7 @@ def render_legend(parts, x, y, rows, font_size=13, row_gap=24):
 
     return y
 
-def generate_svg(stats, total_lines, output, width, title, min_percent):
+def generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit):
     margin = 32
     avatar_size = 44
     left_x = margin
@@ -586,35 +600,58 @@ def generate_svg(stats, total_lines, output, width, title, min_percent):
 
         y += row_h
 
-    if hidden:
+    if hidden and minor_contributors_limit != 0:
+        if minor_contributors_limit is None:
+            hidden_to_show = hidden
+        else:
+            hidden_to_show = hidden[:minor_contributors_limit]
+
         parts.append(
-            f'<text x="{margin}" y="{y + 10}" font-size="13" fill="#57606a">Contributors below {min_percent}%</text>'
+            f'<text x="{margin}" y="{y + 10}" font-size="13" fill="#57606a">'
+            f'Contributors below {min_percent}%'
+            f'</text>'
         )
 
         icon_x = margin
         icon_y = y + 24
         size = 28
 
-        for user, data, percent in hidden[:30]:
+        for user, data, percent in hidden_to_show:
             avatar = data.get("avatar")
             uid = safe_id(user)
 
             if avatar:
                 parts.append(
-                    f'<clipPath id="small-avatar-{uid}"><circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" r="{size/2}"/></clipPath>'
+                    f'<clipPath id="small-avatar-{uid}">'
+                    f'<circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" r="{size/2}"/>'
+                    f'</clipPath>'
                 )
                 parts.append(
-                    f'<image href="{avatar}" x="{icon_x}" y="{icon_y}" width="{size}" height="{size}" clip-path="url(#small-avatar-{uid})"/>'
+                    f'<image href="{avatar}" x="{icon_x}" y="{icon_y}" '
+                    f'width="{size}" height="{size}" '
+                    f'clip-path="url(#small-avatar-{uid})"/>'
                 )
             else:
                 parts.append(
-                    f'<circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" r="{size/2}" fill="#d0d7de"/>'
+                    f'<circle cx="{icon_x + size/2}" cy="{icon_y + size/2}" '
+                    f'r="{size/2}" fill="#d0d7de"/>'
                 )
                 parts.append(
-                    f'<text x="{icon_x + size/2}" y="{icon_y + 19}" text-anchor="middle" font-size="12" font-weight="700" fill="#57606a">{escape(user[:1].upper())}</text>'
+                    f'<text x="{icon_x + size/2}" y="{icon_y + 19}" '
+                    f'text-anchor="middle" font-size="12" font-weight="700" fill="#57606a">'
+                    f'{escape(user[:1].upper())}'
+                    f'</text>'
                 )
 
             icon_x += size + 10
+
+        if minor_contributors_limit is not None and len(hidden) > minor_contributors_limit:
+            remaining = len(hidden) - minor_contributors_limit
+            parts.append(
+                f'<text x="{icon_x + 4}" y="{icon_y + 19}" font-size="13" fill="#57606a">'
+                f'+{remaining} more'
+                f'</text>'
+            )
 
     parts.append("</svg>")
 
@@ -637,6 +674,10 @@ def main():
         min_percent = float(os.environ.get("INPUT_MIN_PERCENT", "0.8"))
     except ValueError:
         min_percent = 0.8
+
+    minor_contributors_limit = parse_minor_contributors_limit(
+        os.environ.get("INPUT_MINOR_CONTRIBUTORS_LIMIT", 22), default=22
+    )
 
     raw_ignore = os.environ.get("INPUT_IGNORE", "")
     raw_users = os.environ.get("INPUT_USERS", "")
@@ -675,7 +716,7 @@ def main():
         if not stats[user].get("avatar"):
             stats[user]["avatar"] = fetch_avatar_by_login_base64(user)
 
-    generate_svg(stats, total_lines, output, width, title, min_percent)
+    generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit)
     warn(f"generated {output}")
 
 
