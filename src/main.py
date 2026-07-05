@@ -1,13 +1,23 @@
+#!/usr/bin/env python3
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from repository_blame.config import load_config
+from repository_blame.config import load_config, parse_optional_limit
+from repository_blame.git_blame import get_language
 from repository_blame.logging_utils import warn
 from repository_blame.stats import collect_stats
 from repository_blame.svg_renderer import generate_svg
 from repository_blame.users import parse_users
+
+
+def parse_minor_contributors_limit(raw_value, default=22):
+    return parse_optional_limit(raw_value, default=default)
+
+
+def parse_show_contributors_limit(raw_value, default=10):
+    return parse_optional_limit(raw_value, default=default)
 
 
 def main():
