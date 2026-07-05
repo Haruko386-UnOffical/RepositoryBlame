@@ -38,7 +38,7 @@ inputs:
   show-contributors-limit:
     description: "How many contributors to show in the contribution area. Use a number, 0, or all."
     required: false
-    default: "10"
+    default: "20"
 
 runs:
   using: "composite"
