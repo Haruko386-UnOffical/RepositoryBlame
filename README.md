@@ -54,6 +54,8 @@ jobs:
           min-percent: "0.8"
           width: "900"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          show-contributors-limit: "10"
+          minor-contributos-limit: "22"
           ignore: |
             vendor/**
             node_modules/**
@@ -85,7 +87,7 @@ After generation, reference the SVG in your README:
 ## Inputs
 
 | Input | Default | Description |
-|---|---:|---|
+|:-:|:--:|:-:|
 | `output` | `dist/code-stats.svg` | Output SVG path. |
 | `title` | `Code Stats` | SVG title. |
 | `width` | `900` | SVG width. |
@@ -93,3 +95,5 @@ After generation, reference the SVG in your README:
 | `ignore` | empty | Extra ignore glob patterns, one per line. |
 | `users` | empty | Optional fallback aliases. Format: `GitHubUser=alias,email,name`. |
 | `github-token` | empty | Token used to resolve commit SHA to GitHub account/avatar. |
+| `minor-contributors-limit` | `22` | How many minor contributors below min-percent to show |
+| `show-contributors-limit` | `10` | How many contributors to show in the contribution area |
