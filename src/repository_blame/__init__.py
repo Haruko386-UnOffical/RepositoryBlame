@@ -1,0 +1,1 @@
+"""RepositoryBlame action implementation."""
