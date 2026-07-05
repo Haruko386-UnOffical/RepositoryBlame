@@ -31,6 +31,8 @@ jobs:
           min-percent: "0.8"
           width: "900"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          show-contributors-limit: "10"
+          minor-contributos-limit: "22"
           ignore: |
             vendor/**
             node_modules/**
