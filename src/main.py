@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from repository_blame.config import load_config
 from repository_blame.logging_utils import warn
 from repository_blame.stats import collect_stats
