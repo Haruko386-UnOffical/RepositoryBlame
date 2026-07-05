@@ -35,6 +35,10 @@ inputs:
     description: "How many minor contributors below min-percent to show. Use a number, 0, or all."
     required: false
     default: "22"
+  show-contributors-limit:
+    description: "How many contributors to show in the contribution area. Use a number, 0, or all."
+    required: false
+    default: "10"
 
 runs:
   using: "composite"
@@ -52,6 +56,7 @@ runs:
         INPUT_USERS: ${{ inputs.users }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_MINOR_CONTRIBUTORS_LIMIT: ${{ inputs.minor-contributors-limit }}
+        INPUT_SHOW_CONTRIBUTORS_LIMIT: ${{ inputs.show-contributors-limit }}
         GITHUB_TOKEN: ${{ github.token }}
 
 branding:

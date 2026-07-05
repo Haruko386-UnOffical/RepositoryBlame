@@ -295,8 +295,21 @@ def parse_minor_contributors_limit(raw_value, default=22):
         parsed = int(value)
         return max(parsed, 0)
     except ValueError:
-        return default    
+        return default
 
+def parse_show_contributors_limit(raw_value, default=10):
+    value = str(raw_value or "").strip().lower()
+    if value == "":
+        return default
+    
+    if value in ("all", "full", "*"):
+        return None # No limit
+    
+    try:
+        parsed = int(value)
+        return max(parsed, 0)
+    except ValueError:
+        return default
 
 def github_api_get_json(url, token):
     headers = {
@@ -483,7 +496,7 @@ def render_legend(parts, x, y, rows, font_size=13, row_gap=24):
 
     return y
 
-def generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit):
+def generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit, show_contributors_limit):
     margin = 32
     avatar_size = 44
     left_x = margin
@@ -495,20 +508,35 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
 
     contributors = sorted(stats.items(), key=lambda x: x[1]["total"], reverse=True)
 
-    visible = []
-    hidden = []
+    full_rows = []
+    minor_rows = []
 
     total_contributors = len(contributors)
 
     for user, data in contributors:
         percent = data["total"] / total_lines * 100 if total_lines else 0
+
         if total_contributors < 5:
-            visible.append((user, data, percent))
+            full_rows.append((user, data, percent))
         else:
             if percent >= min_percent:
-                visible.append((user, data, percent))
+                full_rows.append((user, data, percent))
             else:
-                hidden.append((user, data, percent))
+                minor_rows.append((user, data, percent))
+
+    if show_contributors_limit is None:
+        visible = full_rows
+        overflow_rows = []
+    else:
+        visible = full_rows[:show_contributors_limit]
+        overflow_rows = full_rows[show_contributors_limit:]
+
+    hidden = overflow_rows + minor_rows
+
+    if overflow_rows:
+        hidden_title = "Other contributors"
+    else:
+        hidden_title = f"Contributors below {min_percent}%"
 
     # 先预估高度
     layout_info = []
@@ -524,11 +552,15 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
     if hidden and minor_contributors_limit != 0:
         if minor_contributors_limit is None:
             hidden_count = len(hidden)
+            has_more_label = False
         else:
             hidden_count = min(len(hidden), minor_contributors_limit)
+            has_more_label = len(hidden) > minor_contributors_limit
+
+        layout_count = hidden_count + (1 if has_more_label else 0)
 
         icons_per_row = max(1, (width - margin * 2 - 80) // 38)
-        hidden_rows = (hidden_count + icons_per_row - 1) // icons_per_row
+        hidden_rows = (layout_count + icons_per_row - 1) // icons_per_row
 
         total_height += 34 + hidden_rows * 38
 
@@ -616,7 +648,7 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
 
         parts.append(
             f'<text x="{margin}" y="{y + 10}" font-size="13" fill="#57606a">'
-            f'Contributors below {min_percent}%'
+            f'{hidden_title}'
             f'</text>'
         )
 
@@ -699,6 +731,9 @@ def main():
     minor_contributors_limit = parse_minor_contributors_limit(
         os.environ.get("INPUT_MINOR_CONTRIBUTORS_LIMIT", 22), default=22
     )
+    show_contributors_limit = parse_show_contributors_limit(
+        os.environ.get("INPUT_SHOW_CONTRIBUTORS_LIMIT", 10), default=10
+    )
 
     raw_ignore = os.environ.get("INPUT_IGNORE", "")
     raw_users = os.environ.get("INPUT_USERS", "")
@@ -737,7 +772,7 @@ def main():
         if not stats[user].get("avatar"):
             stats[user]["avatar"] = fetch_avatar_by_login_base64(user)
 
-    generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit)
+    generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit, show_contributors_limit)
     warn(f"generated {output}")
 
 
