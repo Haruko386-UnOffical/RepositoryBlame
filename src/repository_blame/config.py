@@ -15,6 +15,8 @@ class AppConfig:
     min_percent: float
     minor_contributors_limit: Optional[int]
     show_contributors_limit: Optional[int]
+    repository: str
+    branch: str
     ignore_patterns: list[str]
     raw_users: str
 
@@ -64,6 +66,8 @@ def load_config(environ=None):
         show_contributors_limit=parse_optional_limit(
             environ.get("INPUT_SHOW_CONTRIBUTORS_LIMIT", 10), default=10
         ),
+        repository=environ.get("INPUT_REPOSITORY", ""),
+        branch=environ.get("INPUT_BRANCH", ""),
         ignore_patterns=DEFAULT_IGNORE
         + [line.strip() for line in raw_ignore.splitlines() if line.strip()],
         raw_users=environ.get("INPUT_USERS", ""),

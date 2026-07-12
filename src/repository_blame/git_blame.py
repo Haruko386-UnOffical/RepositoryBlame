@@ -7,9 +7,11 @@ from .constants import LANG_BY_EXT, NAME_BY_FILENAME
 from .logging_utils import warn
 
 
-def run(cmd):
+def run(cmd, cwd=None, env=None):
     return subprocess.run(
         cmd,
+        cwd=cwd,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -43,8 +45,8 @@ def should_ignore(path, patterns):
     return False
 
 
-def list_files(ignore_patterns):
-    raw = run(["git", "ls-files", "-z"])
+def list_files(ignore_patterns, repo_dir="."):
+    raw = run(["git", "ls-files", "-z"], cwd=repo_dir)
     result = []
 
     for file in raw.split("\0"):
@@ -54,20 +56,20 @@ def list_files(ignore_patterns):
             continue
         if get_language(file) is None:
             continue
-        if not Path(file).is_file():
+        if not (Path(repo_dir) / file).is_file():
             continue
         result.append(file)
 
     return result
 
 
-def blame_file(path):
+def blame_file(path, repo_dir="."):
     """
     Return non-empty blamed lines as tuples:
       (commit_sha, fallback_author_name, fallback_author_email)
     """
     try:
-        output = run(["git", "blame", "--line-porcelain", "--", path])
+        output = run(["git", "blame", "--line-porcelain", "--", path], cwd=repo_dir)
     except subprocess.CalledProcessError as exc:
         warn(f"skip blame failed file: {path}; {exc.stderr.strip()}")
         return []

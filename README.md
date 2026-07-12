@@ -55,7 +55,7 @@ jobs:
           width: "900"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           show-contributors-limit: "10"
-          minor-contributos-limit: "22"
+          minor-contributors-limit: "22"
           ignore: |
             vendor/**
             node_modules/**
@@ -97,3 +97,36 @@ After generation, reference the SVG in your README:
 | `github-token` | empty | Token used to resolve commit SHA to GitHub account/avatar. |
 | `minor-contributors-limit` | `22` | How many minor contributors below min-percent to show |
 | `show-contributors-limit` | `10` | How many contributors to show in the contribution area |
+| `repository` | empty | Repository to analyze, in `owner/name` form. Empty means the repository running the workflow. |
+| `branch` | empty | Branch or tag to analyze. Empty means the target repository's default branch. |
+
+## Generate another repository's statistics
+
+The workflow and generated SVG can live in a different repository from the source being analyzed. For example, an organization's `.github` repository can analyze `example-org/project` and publish the card from `.github`:
+
+```yaml
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Haruko386-UnOffical/RepositoryBlame@main
+        with:
+          repository: example-org/project
+          branch: main
+          output: dist/project-code-stats.svg
+          title: "Project Code Stats"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: crazy-max/ghaction-github-pages@v4
+        with:
+          target_branch: codeStats
+          build_dir: dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Public target repositories work with the workflow's normal `GITHUB_TOKEN`. To analyze a private repository, pass a fine-grained personal access token or GitHub App token that has read access to the target repository; the `.github` repository's default token normally cannot read another private repository. The token still needs write access to the workflow repository if it is also used by the publish step.
