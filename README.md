@@ -55,7 +55,7 @@ jobs:
           width: "900"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           show-contributors-limit: "10"
-          minor-contributos-limit: "22"
+          minor-contributors-limit: "22"
           ignore: |
             vendor/**
             node_modules/**

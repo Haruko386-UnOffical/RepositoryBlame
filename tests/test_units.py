@@ -4,6 +4,7 @@ import tempfile
 import unittest
 import importlib.util
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -37,6 +38,19 @@ class ConfigTests(unittest.TestCase):
         self.assertIn(".git/**", config.ignore_patterns)
         self.assertIn("generated/**", config.ignore_patterns)
         self.assertIn("*.snap", config.ignore_patterns)
+
+    def test_load_config_reads_target_repository_and_branch(self):
+        config = load_config(
+            {
+                "GITHUB_REPOSITORY": "owner/workflows",
+                "INPUT_REPOSITORY": "owner/project",
+                "INPUT_BRANCH": "release/v1",
+            }
+        )
+
+        self.assertEqual(config.repo, "owner/workflows")
+        self.assertEqual(config.repository, "owner/project")
+        self.assertEqual(config.branch, "release/v1")
 
 
 class GitBlameHelperTests(unittest.TestCase):
@@ -108,6 +122,36 @@ class MainEntryTests(unittest.TestCase):
         self.assertEqual(module.parse_minor_contributors_limit("all", default=22), None)
         self.assertEqual(module.parse_show_contributors_limit("5", default=10), 5)
         self.assertEqual(module.get_language("main.py")[0], "Python")
+
+    def test_normalize_repository(self):
+        spec = importlib.util.spec_from_file_location("action_main_normalize", ROOT / "src" / "main.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        self.assertEqual(module.normalize_repository("", "owner/current"), "owner/current")
+        self.assertEqual(
+            module.normalize_repository("https://github.com/owner/project.git", "owner/current"),
+            "owner/project",
+        )
+        with self.assertRaises(SystemExit):
+            module.normalize_repository("invalid", "owner/current")
+
+    def test_prepare_external_repository_clones_selected_target(self):
+        spec = importlib.util.spec_from_file_location("action_main_prepare", ROOT / "src" / "main.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with (
+            patch.object(module, "clone_target_repository", return_value=Path("target")) as clone,
+            patch.object(module, "run", return_value="abc123\n"),
+        ):
+            repo_dir, repository = module.prepare_target_repository(
+                "org/project", "develop", "token", "org/.github"
+            )
+
+        self.assertEqual(repo_dir, Path("target"))
+        self.assertEqual(repository, "org/project")
+        clone.assert_called_once_with("org/project", "develop", "token")
 
 
 if __name__ == "__main__":

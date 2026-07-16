@@ -10,12 +10,12 @@ def new_stats_map():
     return defaultdict(lambda: {"total": 0, "langs": defaultdict(int), "avatar": None})
 
 
-def collect_stats(config, alias_map, canonical_map):
+def collect_stats(config, alias_map, canonical_map, repo_dir="."):
     stats = new_stats_map()
     total_lines = 0
     commit_cache = {}
 
-    files = list_files(config.ignore_patterns)
+    files = list_files(config.ignore_patterns, repo_dir)
     warn(f"found {len(files)} supported files")
 
     for file in files:
@@ -23,7 +23,7 @@ def collect_stats(config, alias_map, canonical_map):
         if lang is None:
             continue
 
-        for sha, author, email in blame_file(file):
+        for sha, author, email in blame_file(file, repo_dir):
             login, avatar = resolve_commit_identity(config.repo, sha, config.token, commit_cache)
             if login:
                 user = canonical_map.get(login.lower(), login)

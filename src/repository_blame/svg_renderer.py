@@ -251,7 +251,17 @@ def append_hidden_contributors(parts, hidden, minor_contributors_limit, hidden_t
         )
 
 
-def generate_svg(stats, total_lines, output, width, title, min_percent, minor_contributors_limit, show_contributors_limit):
+def generate_svg(
+    stats,
+    total_lines,
+    output,
+    width,
+    title,
+    min_percent,
+    minor_contributors_limit,
+    show_contributors_limit,
+    repository="",
+):
     margin = 32
     avatar_size = 44
     left_x = margin
@@ -274,6 +284,7 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
         + hidden_section_height(hidden, minor_contributors_limit, width, margin)
         + 20
     )
+    repository_prefix = f"{escape(repository)} &#183; " if repository else ""
 
     parts = [
         f'<svg width="{width}" height="{total_height}" viewBox="0 0 {width} {total_height}" xmlns="http://www.w3.org/2000/svg">',
@@ -282,7 +293,7 @@ def generate_svg(stats, total_lines, output, width, title, min_percent, minor_co
         "</style>",
         f'<rect x="1" y="1" width="{width-2}" height="{total_height-2}" rx="{card_radius}" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>',
         f'<text x="{margin}" y="46" font-size="20" font-weight="700" fill="#24292f">{escape(title)}</text>',
-        f'<text x="{margin}" y="68" font-size="13" fill="#57606a">{total_lines} non-empty blamed lines &#183; {len(contributors)} contributors</text>',
+        f'<text x="{margin}" y="68" font-size="13" fill="#57606a">{repository_prefix}{total_lines} non-empty blamed lines &#183; {len(contributors)} contributors</text>',
     ]
 
     y = header_h
