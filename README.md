@@ -3,7 +3,7 @@
 Generate a contributor language contribution SVG using only GitHub Actions, `git blame`, and the GitHub commit API.
 <div align="center">
    <picture>
-  <img alt="Our repository blame graph" src="https://raw.githubusercontent.com/Haruko386-UnOffical/RepositoryBlame/refs/heads/codeStats/code-stats.svg" width="70%">
+  <img alt="Our repository blame graph" src="https://raw.githubusercontent.com/Haruko386-UnOffical/.github/refs/heads/codeStats/code-stats.svg" width="70%">
     </picture>
 </div>
 
